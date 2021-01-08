@@ -2,9 +2,10 @@
 
 namespace Dialect\Gdpr;
 
+use Dialect\Gdpr\Commands\AnonymizeInactiveUsers;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
-use Dialect\Gdpr\Commands\AnonymizeInactiveUsers;
 
 class GdprServiceProvider extends ServiceProvider
 {
@@ -25,6 +26,12 @@ class GdprServiceProvider extends ServiceProvider
             __DIR__.'/middleware/RedirectIfUnansweredTerms.php' => base_path('app/Http/Middleware/RedirectIfUnansweredTerms.php'),
             __DIR__.'/Http/Controllers/GdprController.php' => base_path('app/Http/Controllers/GdprController.php'),
         ], 'gdpr-consent');
+
+        // add scheduled job without overriding any other scheduled jobs
+        $this->app->booted(function () {
+            $schedule = $this->app->make(Schedule::class);
+            $schedule->command(AnonymizeInactiveUsers::class)->daily();
+        });
     }
 
     /**
@@ -36,7 +43,7 @@ class GdprServiceProvider extends ServiceProvider
     {
         Route::group([
             'prefix' => config('gdpr.uri'),
-            'namespace' => 'App\Http\Controllers',
+            'namespace' => app()->getNamespace().'Http\Controllers',
             'middleware' => config('gdpr.middleware'),
         ], function () {
             $this->loadRoutesFrom(__DIR__.'/routes/web.php');
@@ -61,7 +68,6 @@ class GdprServiceProvider extends ServiceProvider
     {
         $this->configure();
         $this->offerPublishing();
-        $this->addScheduledJobs();
     }
 
     /**
@@ -86,16 +92,5 @@ class GdprServiceProvider extends ServiceProvider
                 __DIR__.'/config/gdpr.php' => config_path('gdpr.php'),
             ], 'gdpr-config');
         }
-    }
-
-    protected function addScheduledJobs()
-    {
-        $this->app->singleton('dialect.gdpr.console.kernel', function ($app) {
-            $dispatcher = $app->make(\Illuminate\Contracts\Events\Dispatcher::class);
-
-            return new console\Kernel($app, $dispatcher);
-        });
-
-        $this->app->make('dialect.gdpr.console.kernel');
     }
 }

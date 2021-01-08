@@ -2,8 +2,8 @@
 
 namespace Dialect\Gdpr;
 
-use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Str;
 
 trait Anonymizable
 {
@@ -47,7 +47,9 @@ trait Anonymizable
                         $collection = [$collection];
                     }
                     foreach ($collection as $item) {
-                        $item->anonymize($modelChecker);
+                        if (isset($item)) {
+                            $item->anonymize($modelChecker);
+                        }
                     }
                 }
             }
@@ -63,7 +65,7 @@ trait Anonymizable
     {
         if ($item instanceof \Closure) {
             $value = \call_user_func($item());
-        } elseif ($item == null) {
+        } elseif ($item == null || is_int($item) || is_string($item)) {
             $value = $item;
         } else {
             $value = config('gdpr.string.default');
